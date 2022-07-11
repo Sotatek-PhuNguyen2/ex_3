@@ -12,6 +12,7 @@ import (
 
 var M map[string]string
 var mu sync.Mutex
+var wg sync.WaitGroup
 
 func chanRoutine() {
 	log.Print("hello 1")
@@ -25,15 +26,16 @@ func chanRoutine() {
 	log.Print("hello 2")
 }
 
-func Input(a int, b int) {
+func Input(wg *sync.WaitGroup) {
 	M = make(map[string]string)
-	for i := a; i < b; i++ {
+	for i := 0; i < 1000; i++ {
 		time.Sleep(1 * time.Millisecond)
 		mu.Lock()
 		t := strconv.Itoa(i)
 		M[t] = t
 		mu.Unlock()
 	}
+	wg.Done()
 }
 
 func Output() {
@@ -60,34 +62,53 @@ func errFunc() {
 }
 
 func Test4() {
-	var file, err = os.Open("file.txt")
+	c := make(chan string, 1000)
+	var file, err = os.Open("../test4/file.txt")
 	if err != nil {
 		fmt.Print("Error opening file.txt: ", err)
 	}
 	defer file.Close()
 
-	c := make(chan string, 10)
-	index := 0
-
 	scanner := bufio.NewScanner(file)
-	mu.Lock()
 	for scanner.Scan() {
-		go func() {
-			//time.Sleep(1 * time.Second)
-			c <- scanner.Text()
-			index++
-		}()
-		fmt.Printf("So dong hien tai: %d co gia tri la: %s \n", index, <-c)
+		c <- scanner.Text()
 	}
+
+	index1 := 0
+	for i := 0; i < 3; i++ {
+		go func() {
+			for i := 0; i < 40; i++ {
+				mu.Lock()
+				index1++
+				fmt.Printf("Dong thu %d co gia tri la: %s \n", index1, <-c)
+				mu.Unlock()
+			}
+		}()
+	}
+
+	time.Sleep(1 * time.Second)
+
 	if err := scanner.Err(); err != nil {
 		fmt.Print("Error reading file.txt: ", err)
 	}
-	mu.Unlock()
 }
-
 func main() {
-	Input(666, 1000)
-	go Input(0, 333)
-	go Input(333, 666)
+	/**TEST1
+	chanRoutine()
+	*/
+
+	/** TEST2
+	wg.Add(3)
+	for i := 0; i < 3; i++ {
+		go Input(&wg)
+	}
+	wg.Wait()
 	Output()
+	*/
+
+	/**TEST3
+	errFunc()
+	*/
+
+	Test4()
 }
