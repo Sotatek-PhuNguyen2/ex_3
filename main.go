@@ -63,7 +63,7 @@ func errFunc() {
 
 func Test4() {
 	c := make(chan string, 1000)
-	var file, err = os.Open("../test4/file.txt")
+	var file, err = os.Open("file.txt")
 	if err != nil {
 		fmt.Print("Error opening file.txt: ", err)
 	}
@@ -74,19 +74,20 @@ func Test4() {
 		c <- scanner.Text()
 	}
 
+	wg.Add(3)
 	index1 := 0
 	for i := 0; i < 3; i++ {
 		go func() {
-			for i := 0; i < 40; i++ {
-				mu.Lock()
+			for range <-c {
 				index1++
 				fmt.Printf("Dong thu %d co gia tri la: %s \n", index1, <-c)
-				mu.Unlock()
 			}
+			wg.Done()
 		}()
 	}
+	close(c)
 
-	time.Sleep(1 * time.Second)
+	wg.Wait()
 
 	if err := scanner.Err(); err != nil {
 		fmt.Print("Error reading file.txt: ", err)
